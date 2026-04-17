@@ -28,6 +28,11 @@ run-watch:
 run-demo:
 	uv run src/demo.py $(if $(LEVEL),--level $(LEVEL))
 
+# `*.desktop` files in this repo use `__HOME__` as a portability placeholder
+# substituted at install time. KDE Plasma's systemd-xdg-autostart-generator
+# does not reliably honor `$HOME` / shell escapes in Exec=, so we bake the
+# absolute path into the deployed copy and reverse the substitution on fetch.
+
 autostart:
 	@install -d "$(BIN_DIR)" "$(AUTOSTART_DIR)"
 	@for pair in $(MANAGED); do \
@@ -36,7 +41,15 @@ autostart:
 	        "$(BIN_DIR)"/*) mode=755 ;; \
 	        *)              mode=644 ;; \
 	    esac; \
-	    install -m $$mode "$$src" "$$tgt"; \
+	    case "$$src" in \
+	        *.desktop) \
+	            tmp=$$(mktemp); \
+	            sed "s|__HOME__|$$HOME|g" "$$src" > "$$tmp"; \
+	            install -m $$mode "$$tmp" "$$tgt"; \
+	            rm -f "$$tmp" ;; \
+	        *) \
+	            install -m $$mode "$$src" "$$tgt" ;; \
+	    esac; \
 	    echo "  install  $$src -> $$tgt"; \
 	done
 
@@ -45,12 +58,23 @@ fetch:
 	    src=$${pair%%|*}; tgt=$${pair#*|}; \
 	    if [ ! -f "$$tgt" ]; then \
 	        echo "  skip    $$tgt (not installed)"; \
-	    elif cmp -s "$$src" "$$tgt"; then \
+	        continue; \
+	    fi; \
+	    case "$$src" in \
+	        *.desktop) \
+	            tmp=$$(mktemp); \
+	            sed "s|$$HOME|__HOME__|g" "$$tgt" > "$$tmp"; \
+	            cmp_target=$$tmp ;; \
+	        *) \
+	            cmp_target=$$tgt ;; \
+	    esac; \
+	    if cmp -s "$$src" "$$cmp_target"; then \
 	        echo "  same    $$tgt"; \
 	    else \
-	        cp "$$tgt" "$$src"; \
+	        cp "$$cmp_target" "$$src"; \
 	        echo "  fetch   $$tgt -> $$src"; \
 	    fi; \
+	    [ "$$cmp_target" = "$$tgt" ] || rm -f "$$cmp_target"; \
 	done
 
 status:
@@ -58,7 +82,17 @@ status:
 	    src=$${pair%%|*}; tgt=$${pair#*|}; \
 	    if [ ! -f "$$tgt" ]; then \
 	        printf "  %-12s %s\n" "[MISSING]" "$$tgt"; \
-	    elif cmp -s "$$src" "$$tgt"; then \
+	        continue; \
+	    fi; \
+	    case "$$src" in \
+	        *.desktop) \
+	            tmp=$$(mktemp); \
+	            sed "s|$$HOME|__HOME__|g" "$$tgt" > "$$tmp"; \
+	            cmp_target=$$tmp ;; \
+	        *) \
+	            cmp_target=$$tgt ;; \
+	    esac; \
+	    if cmp -s "$$src" "$$cmp_target"; then \
 	        printf "  %-12s %s\n" "[OK]" "$$src"; \
 	    else \
 	        src_mt=$$(stat -c %Y "$$src"); \
@@ -69,4 +103,5 @@ status:
 	        fi; \
 	        printf "  %-12s %s  (%s)\n" "[DIFF]" "$$src" "$$rel"; \
 	    fi; \
+	    [ "$$cmp_target" = "$$tgt" ] || rm -f "$$cmp_target"; \
 	done
