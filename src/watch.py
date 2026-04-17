@@ -29,6 +29,11 @@ APP_PATTERNS = {
     "rsnapshot": "JINGLE",
 }
 
+# Apps whose notifications should never trigger a haptic (lowercase).
+MUTED_APPS = {
+    "spectacle",
+}
+
 # Optional: map notification urgency levels to different patterns
 # urgency: 0=low, 1=normal, 2=critical
 URGENCY_PATTERNS = {
@@ -105,7 +110,12 @@ def watch_notifications():
                 # Extract app name: dbus-monitor outputs 'string "AppName"'
                 app_name = line.split('"', 1)[1].rstrip('"') if '"' in line else ""
                 logging.debug(f"Raw app name: '{app_name}' (lowered: '{app_name.lower()}')")
-                pattern = APP_PATTERNS.get(app_name.lower()) \
+                key = app_name.lower()
+                if key in MUTED_APPS:
+                    logging.info(f"✗ [{app_name}] muted")
+                    in_notify_call = False
+                    continue
+                pattern = APP_PATTERNS.get(key) \
                        or URGENCY_PATTERNS.get(urgency) \
                        or HAPTIC_PATTERN
                 logging.info(f"✓ [{app_name}] triggering haptic: {pattern}")
