@@ -27,6 +27,7 @@ APP_PATTERNS = {
     "obsidian": "WAVE",
     "dolphin": "SUBTLE COLLISION",
     "rsnapshot": "JINGLE",
+    "cloud-drive-ui": "KNOCK",
 }
 
 # Apps whose notifications should never trigger a haptic (lowercase).
