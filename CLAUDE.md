@@ -33,7 +33,7 @@ If you add a new deployed artifact, add one line to `MANAGED` and all three targ
 - **Stdlib-only.** If a change starts pulling in `dbus-python`, `hid`, `pygobject`, reconsider — we intentionally moved away from all of those.
 - **`DEVICE_NAME = "MX Master 4"` is duplicated** in `watch.py` and `demo.py` on purpose. When deployed as `~/.local/bin/mx4-watch` and `~/.local/bin/mx4-demo`, they don't share a module — keep them self-contained.
 - **`haptic-level` is global device state.** Anything that changes it for the duration of a run must restore it in a `finally` block (see `demo.py`).
-- **The `.desktop` `Exec=` path is an absolute homedir path.** `.desktop` files don't expand `~` or `$HOME`. The current entry targets `/home/msfz751/.local/bin/mx4-watch`.
+- **The `.desktop` `Exec=` uses `sh -c 'exec "$HOME/..."'`** so the same file works for any user. XDG Desktop Entry spec does *not* expand `~` / `$HOME` in `Exec=` directly; delegating to `sh -c` lets the shell do the expansion before `exec`'ing the target. Don't "simplify" back to an absolute path — it breaks distribution to other users.
 
 ## Not in scope
 

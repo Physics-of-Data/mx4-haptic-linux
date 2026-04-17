@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=MX Master 4 Haptics
-Exec=/home/msfz751/.local/bin/mx4-watch
+Exec=sh -c 'exec "$HOME/.local/bin/mx4-watch"'
 Restart=always
 X-KDE-AutostartEnabled=true
