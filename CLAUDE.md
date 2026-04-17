@@ -5,7 +5,7 @@ Trigger MX Master 4 haptics on Linux desktop notifications. Two small Python scr
 ## Runtime
 
 - [src/watch.py](src/watch.py) — the daemon. Spawns `dbus-monitor` as a subprocess, parses its text output line-by-line, and for each `Notify` call: short-circuits silently if the app (lowercased) is in `MUTED_APPS`, otherwise resolves a haptic pattern via `APP_PATTERNS` → `URGENCY_PATTERNS` → `HAPTIC_PATTERN`. Plays it by shelling out to `solaar config "MX Master 4" haptic-play <PATTERN>`.
-- [src/demo.py](src/demo.py) — cycles all 16 waveforms with a 3s gap. `--level N` (0–100) sets `haptic-level` for the run and restores the previous value in a `try/finally` on exit.
+- [src/demo.py](src/demo.py) — cycles all 16 waveforms with a 3s gap. `--level N` (0–100) sets `haptic-level` for the run and restores the previous value in a `try/finally` on exit. The `WAVEFORMS` list here is the canonical set of valid pattern names; the README mirrors it grouped by character, and `watch.py` repeats it in a comment for at-a-glance reference when editing `APP_PATTERNS`.
 
 Both scripts are **stdlib-only**. No PyPI dependencies. They do need `solaar` and `dbus-monitor` on `PATH`.
 

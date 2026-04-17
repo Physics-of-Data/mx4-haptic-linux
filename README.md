@@ -46,8 +46,26 @@ Edit [src/watch.py](src/watch.py):
 - `APP_PATTERNS` — map D-Bus app name (lowercase) to a waveform
 - `URGENCY_PATTERNS` — map urgency (0/1/2) to a waveform
 - `HAPTIC_PATTERN` — default when nothing else matches
+- `MUTED_APPS` — set of app names (lowercase) whose notifications never trigger a haptic
 
-Priority: app → urgency → default.
+Priority: muted check → app → urgency → default.
+
+### Available waveforms
+
+The MX Master 4 ships with 16 named waveforms. Pick by feel:
+
+| Strong / distinct | Soft / subtle |
+|---|---|
+| `SHARP STATE CHANGE` | `SQUARE` |
+| `DAMP STATE CHANGE` | `WAVE` |
+| `SHARP COLLISION` | `FIREWORK` |
+| `DAMP COLLISION` | `MAD` |
+| `SUBTLE COLLISION` | `KNOCK` |
+| `HAPPY ALERT` | `JINGLE` |
+| `ANGRY ALERT` | `RINGING` |
+| `COMPLETED` | `WHISPER COLLISION` |
+
+Run `make run-demo` to feel them all in order. The canonical list lives in [src/demo.py](src/demo.py) (`WAVEFORMS`).
 
 Browser-delivered web-app notifications (e.g. Gmail in Firefox) arrive with the browser's app name, not the web app's. There's no reliable way to distinguish them without parsing the notification body.
 
