@@ -1,0 +1,42 @@
+# CLAUDE.md
+
+Trigger MX Master 4 haptics on Linux desktop notifications. Two small Python scripts, a Makefile, an XDG autostart entry. That's the whole repo.
+
+## Runtime
+
+- [src/watch.py](src/watch.py) — the daemon. Spawns `dbus-monitor` as a subprocess, parses its text output line-by-line, and for each `Notify` call resolves a haptic pattern via `APP_PATTERNS` → `URGENCY_PATTERNS` → `HAPTIC_PATTERN`. Plays it by shelling out to `solaar config "MX Master 4" haptic-play <PATTERN>`.
+- [src/demo.py](src/demo.py) — cycles all 16 waveforms with a 3s gap. `--level N` (0–100) sets `haptic-level` for the run and restores the previous value in a `try/finally` on exit.
+
+Both scripts are **stdlib-only**. No PyPI dependencies. They do need `solaar` and `dbus-monitor` on `PATH`.
+
+## Why this approach works
+
+A few non-obvious calls that are load-bearing:
+
+1. **Everything goes through `solaar`, not HID++ directly.** An earlier iteration (in the retired `mx4notifications` repo) implemented HID++ 2.0 itself via libhidapi. It broke against a Bolt receiver because the receiver requires a *slot index* (1–6) as the HID++ `device_idx`, not the USB `interface_number` that naive `hid.enumerate` returns. `solaar` already handles receiver enumeration and slot discovery, so we let it.
+2. **`dbus-monitor` subprocess, not `dbus-python`.** Parsing `dbus-monitor`'s text stream keeps the project stdlib-only and removes a pile of D-Bus binding / GLib dependencies. The parse is forgiving (see [watch.py:86-113](src/watch.py#L86-L113)) — it looks for `member=Notify`, then the first `string` line, then any `byte` line containing `urgency`.
+3. **App-name dispatch, not just urgency.** The first `string` arg of the `Notify` D-Bus call is the app name. We route on that before falling back to urgency. This is what makes the per-app table meaningful — Claude Code → `COMPLETED`, Firefox → `KNOCK`, etc.
+4. **Tolerating solaar-on-Python-3.14.** `solaar config` currently crashes on shutdown with `TypeError: Unable to marshal str as an array` (inside `Gio.Application.run`). The HID++ write always lands *before* the crash. `demo.py` suppresses solaar's stderr and ignores its exit code for a clean log; `watch.py` leaves the warning visible (notifications are sparse and it's useful signal if solaar ever genuinely fails).
+
+## Install / deploy model
+
+The Makefile owns a `MANAGED` list of `repo-path|install-path` pairs. Three targets act on it symmetrically:
+
+- `make autostart` — copy repo → installed (scripts get `755`, the desktop file gets `644`)
+- `make fetch` — copy installed → repo (for capturing out-of-band edits to `~/.local/bin/*` or `~/.config/autostart/mx4-haptics.desktop`)
+- `make status` — `[OK]` / `[DIFF]` / `[MISSING]` per pair; on `[DIFF]`, reports which side is newer by mtime
+
+If you add a new deployed artifact, add one line to `MANAGED` and all three targets pick it up.
+
+## Conventions to preserve
+
+- **Stdlib-only.** If a change starts pulling in `dbus-python`, `hid`, `pygobject`, reconsider — we intentionally moved away from all of those.
+- **`DEVICE_NAME = "MX Master 4"` is duplicated** in `watch.py` and `demo.py` on purpose. When deployed as `~/.local/bin/mx4-watch` and `~/.local/bin/mx4-demo`, they don't share a module — keep them self-contained.
+- **`haptic-level` is global device state.** Anything that changes it for the duration of a run must restore it in a `finally` block (see `demo.py`).
+- **The `.desktop` `Exec=` path is an absolute homedir path.** `.desktop` files don't expand `~` or `$HOME`. The current entry targets `/home/msfz751/.local/bin/mx4-watch`.
+
+## Not in scope
+
+- A direct-HID fallback for when `solaar` isn't installed. We tried; receiver-slot discovery is the hard part and solaar solves it for us.
+- Per-haptic intensity. HID++ 0x0B4E does not expose a per-call intensity; only the global `haptic-level`.
+- Parsing notification bodies to distinguish web-app notifications (e.g. Gmail in Firefox). The D-Bus app name is always the browser's.

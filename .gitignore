@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Environments
+.venv/
+venv/
+env/
+.env
+.envrc
+
+# uv
+# uv.lock is kept in version control
+
+# IDE / editor
+.vscode/
+.idea/
+.project/
+.claude/
+
+# Misc
+.DS_Store
+.directory
+*.log
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/

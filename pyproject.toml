@@ -1,0 +1,6 @@
+[project]
+name = "mx4-haptic-linux"
+version = "0.1.0"
+description = "MX Master 4 notification haptics for Linux"
+requires-python = ">=3.12"
+dependencies = []
