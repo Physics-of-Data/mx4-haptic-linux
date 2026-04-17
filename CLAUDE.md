@@ -33,7 +33,8 @@ If you add a new deployed artifact, add one line to `MANAGED` and all three targ
 - **Stdlib-only.** If a change starts pulling in `dbus-python`, `hid`, `pygobject`, reconsider — we intentionally moved away from all of those.
 - **`DEVICE_NAME = "MX Master 4"` is duplicated** in `watch.py` and `demo.py` on purpose. When deployed as `~/.local/bin/mx4-watch` and `~/.local/bin/mx4-demo`, they don't share a module — keep them self-contained.
 - **`haptic-level` is global device state.** Anything that changes it for the duration of a run must restore it in a `finally` block (see `demo.py`).
-- **The `.desktop` `Exec=` uses `sh -c 'exec "$HOME/..."'`** so the same file works for any user. XDG Desktop Entry spec does *not* expand `~` / `$HOME` in `Exec=` directly; delegating to `sh -c` lets the shell do the expansion before `exec`'ing the target. Don't "simplify" back to an absolute path — it breaks distribution to other users.
+- **The `.desktop` `Exec=` uses `sh -c "exec \\"\\$HOME/..\\""`** so the same file works for any user. XDG Desktop Entry spec does *not* expand `~` / `$HOME` in `Exec=` directly; delegating to `sh -c` lets the shell do the expansion before `exec`'ing the target. Don't "simplify" back to an absolute path — it breaks distribution to other users.
+- **`Exec=` quoting must be XDG-spec-strict, not shell-loose.** Single quotes are reserved characters and `$` inside double quotes must be escaped as `\\$` (and `"` as `\\"`). KDE Plasma's autostart silently skips invalid entries — manual `sh` invocation will still work, masking the bug. Always run `desktop-file-validate` after editing. Also: `Restart=always` is a *systemd* key, not a desktop-entry key — it fails validation and does nothing.
 
 ## Not in scope
 
