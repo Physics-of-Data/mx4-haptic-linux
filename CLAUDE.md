@@ -28,6 +28,18 @@ The Makefile owns a `MANAGED` list of `repo-path|install-path` pairs. Three targ
 
 If you add a new deployed artifact, add one line to `MANAGED` and all three targets pick it up.
 
+### `__HOME__` placeholder substitution (`*.desktop` only)
+
+The repo's `autostart/mx4-haptics.desktop` contains `Exec=__HOME__/.local/bin/mx4-watch`. The literal string `__HOME__` is a placeholder — not a shell variable, not an env var, just a sentinel chosen because it's vanishingly unlikely to appear in real text. All three Makefile targets handle it via `sed`:
+
+- **`make autostart`** — for any `*.desktop` source, `sed "s|__HOME__|$HOME|g"` rewrites the file into a tempfile, then `install` copies that tempfile to the target. The deployed file ends up with the absolute path baked in (`Exec=/home/msfz751/.local/bin/mx4-watch`). The repo file is never touched.
+- **`make fetch`** — reverse direction: `sed "s|$HOME|__HOME__|g"` rewrites the *installed* file into a tempfile, then compares/copies that to the repo source. So if you hand-edit `~/.config/autostart/mx4-haptics.desktop` to change a key, `make fetch` brings the change back into the repo with `$HOME` re-templated.
+- **`make status`** — same reverse substitution into a tempfile, then `cmp` against the repo source. This is what makes `[OK]` honest: a freshly-deployed file reports `[OK]` even though the on-disk bytes differ.
+
+Why a placeholder instead of shell expansion in `Exec=` itself: see the convention bullet below. KDE Plasma 6's autostart layer can't reliably evaluate `$HOME`, so substitution has to happen *before* the file reaches that layer.
+
+To extend the mechanism (e.g. another templated `*.desktop` file, or a new placeholder), the dispatch happens in the `case "$src" in *.desktop)` arm of each target — keep the same sed pattern in both directions so the round-trip stays lossless.
+
 ## Conventions to preserve
 
 - **Stdlib-only.** If a change starts pulling in `dbus-python`, `hid`, `pygobject`, reconsider — we intentionally moved away from all of those.
